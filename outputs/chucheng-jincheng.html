@@ -1,0 +1,2111 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>出城进城</title>
+  <style>
+    :root {
+      --ink: #17212b;
+      --muted: #657487;
+      --line: #d9e1e8;
+      --paper: #f8fbfd;
+      --panel: #ffffff;
+      --field: #eef6f3;
+      --outside: #f4f0e7;
+      --player: #2477b3;
+      --a: #b34848;
+      --b: #6a5bb7;
+      --c: #3e8a57;
+      --warn: #b36b18;
+      --danger: #b72f42;
+      --ok: #2f7d54;
+      --shadow: 0 10px 28px rgba(23, 33, 43, 0.08);
+      font-family: "Microsoft YaHei", "PingFang SC", "Noto Sans SC", system-ui, sans-serif;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      min-height: 100vh;
+      color: var(--ink);
+      background:
+        linear-gradient(180deg, rgba(255,255,255,0.92), rgba(248,251,253,0.96)),
+        repeating-linear-gradient(90deg, rgba(36,119,179,0.06) 0 1px, transparent 1px 42px),
+        repeating-linear-gradient(0deg, rgba(47,125,84,0.04) 0 1px, transparent 1px 42px);
+    }
+
+    button, select {
+      font: inherit;
+    }
+
+    button {
+      border: 1px solid var(--line);
+      background: var(--panel);
+      color: var(--ink);
+      border-radius: 8px;
+      padding: 10px 12px;
+      cursor: pointer;
+      transition: transform 120ms ease, border-color 120ms ease, background 120ms ease;
+    }
+
+    button:hover:not(:disabled) {
+      transform: translateY(-1px);
+      border-color: #9db4c7;
+      background: #f4f9fc;
+    }
+
+    button:disabled {
+      cursor: not-allowed;
+      color: #9aa6b2;
+      background: #eef1f4;
+    }
+
+    button:focus {
+      outline: 2px solid rgba(36, 95, 143, 0.28);
+      outline-offset: 2px;
+    }
+
+    .app {
+      width: min(1180px, calc(100vw - 24px));
+      margin: 0 auto;
+      padding: 18px 0 24px;
+    }
+
+    .topbar {
+      display: grid;
+      grid-template-columns: 1fr auto;
+      gap: 14px;
+      align-items: end;
+      margin-bottom: 14px;
+    }
+
+    h1 {
+      margin: 0;
+      font-size: clamp(26px, 4vw, 42px);
+      line-height: 1.1;
+      letter-spacing: 0;
+    }
+
+    .subtitle {
+      margin-top: 6px;
+      color: var(--muted);
+      font-size: 14px;
+    }
+
+    .status-strip {
+      display: grid;
+      grid-template-columns: repeat(3, max-content);
+      gap: 8px;
+      justify-content: end;
+    }
+
+    .pill {
+      border: 1px solid var(--line);
+      background: rgba(255,255,255,0.8);
+      border-radius: 999px;
+      padding: 7px 10px;
+      font-size: 13px;
+      white-space: nowrap;
+    }
+
+    .result-banner {
+      display: none;
+      margin-bottom: 14px;
+      padding: 12px 14px;
+      border: 1px solid var(--line);
+      background: var(--panel);
+      border-radius: 8px;
+      box-shadow: var(--shadow);
+      font-weight: 700;
+    }
+
+    .result-banner.show {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+    }
+
+    .result-banner.win {
+      border-color: rgba(47,125,84,0.35);
+      color: var(--ok);
+    }
+
+    .result-banner.lose {
+      border-color: rgba(183,47,66,0.35);
+      color: var(--danger);
+    }
+
+    .tutorial-panel {
+      margin-bottom: 14px;
+      padding: 14px;
+      border: 1px solid rgba(36,95,143,0.24);
+      border-radius: 8px;
+      background: #f3f9fd;
+      box-shadow: var(--shadow);
+    }
+
+    .tutorial-panel.is-hidden {
+      display: none;
+    }
+
+    .tutorial-panel h2 {
+      margin: 0 0 8px;
+      font-size: 18px;
+    }
+
+    .tutorial-actions {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      margin-top: 12px;
+    }
+
+    .tutorial-note {
+      color: var(--muted);
+      font-size: 14px;
+      line-height: 1.6;
+    }
+
+    .tutorial-callout {
+      margin-bottom: 12px;
+      padding: 10px 12px;
+      border: 1px solid rgba(179,107,24,0.28);
+      border-radius: 8px;
+      background: #fff8eb;
+      color: #7c4a11;
+      font-weight: 700;
+    }
+
+    .tutorial-callout.is-hidden {
+      display: none;
+    }
+
+    .layout {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) 320px;
+      gap: 14px;
+      align-items: start;
+    }
+
+    .board {
+      display: grid;
+      grid-template-columns: minmax(150px, 1fr) minmax(170px, 1.1fr) minmax(150px, 1fr);
+      grid-template-rows: repeat(3, minmax(142px, auto));
+      grid-template-areas:
+        ". aiA ."
+        "aiB outside aiC"
+        ". player .";
+      gap: 10px;
+      width: min(100%, 720px);
+      justify-self: center;
+    }
+
+    .zone {
+      position: relative;
+      min-height: 142px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: var(--field);
+      padding: 10px;
+      box-shadow: var(--shadow);
+      overflow: hidden;
+    }
+
+    .zone-player { grid-area: player; }
+    .zone-ai-a { grid-area: aiA; }
+    .zone-ai-b { grid-area: aiB; }
+    .zone-ai-c { grid-area: aiC; }
+
+    .zone.outside {
+      grid-area: outside;
+      background:
+        linear-gradient(135deg, rgba(244,240,231,0.92), rgba(238,246,243,0.92));
+      min-height: 152px;
+    }
+
+    .zone-title {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+      margin-bottom: 10px;
+      font-weight: 800;
+    }
+
+    .zone-link {
+      color: var(--muted);
+      font-size: 12px;
+      font-weight: 500;
+    }
+
+    .tokens {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(118px, 1fr));
+      gap: 7px;
+    }
+
+    .token {
+      border: 1px solid rgba(23,33,43,0.12);
+      border-left-width: 6px;
+      border-radius: 8px;
+      background: rgba(255,255,255,0.88);
+      padding: 8px;
+      min-height: 84px;
+    }
+
+    .token.dead {
+      opacity: 0.48;
+      filter: grayscale(0.9);
+    }
+
+    .token.player { border-left-color: var(--player); }
+    .token.ai-a { border-left-color: var(--a); }
+    .token.ai-b { border-left-color: var(--b); }
+    .token.ai-c { border-left-color: var(--c); }
+    .token.active {
+      outline: 3px solid rgba(179,107,24,0.28);
+      background: #fffaf0;
+    }
+
+    .token-name {
+      display: flex;
+      justify-content: space-between;
+      gap: 8px;
+      font-weight: 800;
+      margin-bottom: 8px;
+    }
+
+    .hearts {
+      display: grid;
+      grid-template-columns: repeat(5, 1fr);
+      gap: 3px;
+      margin: 7px 0 8px;
+    }
+
+    .heart {
+      height: 9px;
+      border-radius: 999px;
+      background: #d5dde5;
+    }
+
+    .heart.full {
+      background: #d84c5d;
+    }
+
+    .meta {
+      color: var(--muted);
+      font-size: 12px;
+      line-height: 1.5;
+    }
+
+    .side {
+      display: grid;
+      gap: 12px;
+    }
+
+    .panel {
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: var(--panel);
+      box-shadow: var(--shadow);
+      padding: 12px;
+    }
+
+    .panel.is-hidden {
+      display: none;
+    }
+
+    .panel h2 {
+      margin: 0 0 10px;
+      font-size: 16px;
+      letter-spacing: 0;
+    }
+
+    .rps-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 8px;
+    }
+
+    .rps-grid button {
+      min-height: 58px;
+      font-weight: 800;
+    }
+
+    .last-throws {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 8px;
+      margin-top: 10px;
+    }
+
+    .throw-box {
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      padding: 8px;
+      background: #f7fafc;
+      min-height: 48px;
+      font-size: 13px;
+    }
+
+    .actions {
+      display: grid;
+      gap: 8px;
+    }
+
+    .action-row {
+      display: grid;
+      grid-template-columns: 96px 1fr;
+      gap: 8px;
+      align-items: center;
+    }
+
+    .action-row select {
+      width: 100%;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      padding: 10px;
+      background: white;
+      color: var(--ink);
+    }
+
+    .button-primary {
+      background: #245f8f;
+      border-color: #245f8f;
+      color: white;
+    }
+
+    .button-primary:hover:not(:disabled) {
+      background: #1e537d;
+      border-color: #1e537d;
+    }
+
+    .button-danger {
+      color: white;
+      background: var(--danger);
+      border-color: var(--danger);
+    }
+
+    .button-danger:not(:disabled),
+    .button-danger:hover:not(:disabled),
+    .button-danger:focus:not(:disabled),
+    .button-danger:active:not(:disabled) {
+      color: white;
+      background: var(--danger);
+      border-color: var(--danger);
+    }
+
+    .button-good {
+      color: white;
+      background: var(--ok);
+      border-color: var(--ok);
+    }
+
+    .button-good:not(:disabled),
+    .button-good:hover:not(:disabled),
+    .button-good:focus:not(:disabled),
+    .button-good:active:not(:disabled) {
+      color: white;
+      background: var(--ok);
+      border-color: var(--ok);
+    }
+
+    .button-primary:not(:disabled),
+    .button-primary:hover:not(:disabled),
+    .button-primary:focus:not(:disabled),
+    .button-primary:active:not(:disabled) {
+      color: white;
+      background: #245f8f;
+      border-color: #245f8f;
+    }
+
+    .button-primary:hover:not(:disabled) {
+      background: #1e537d;
+      border-color: #1e537d;
+    }
+
+    .ai-settings {
+      display: grid;
+      gap: 10px;
+    }
+
+    .ai-assignments {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 8px;
+    }
+
+    .ai-field {
+      display: grid;
+      gap: 5px;
+      font-size: 12px;
+      color: var(--muted);
+    }
+
+    .ai-field select,
+    .ai-field input {
+      width: 100%;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      padding: 8px;
+      background: white;
+      color: var(--ink);
+    }
+
+    .ai-profile {
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      padding: 10px;
+      background: #f7fafc;
+    }
+
+    .ai-profile-title {
+      margin-bottom: 8px;
+      font-weight: 800;
+      font-size: 13px;
+    }
+
+    .ai-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 8px;
+    }
+
+    .ai-default {
+      color: var(--muted);
+      font-size: 11px;
+    }
+
+    .hint {
+      margin-top: 8px;
+      color: var(--muted);
+      font-size: 13px;
+      line-height: 1.5;
+    }
+
+    .log {
+      height: 260px;
+      overflow: auto;
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+      padding-right: 4px;
+    }
+
+    .log-entry {
+      border-left: 3px solid #9db4c7;
+      background: #f7fafc;
+      padding: 7px 8px;
+      border-radius: 0 6px 6px 0;
+      font-size: 13px;
+      line-height: 1.45;
+    }
+
+    .log-entry.important {
+      border-left-color: var(--warn);
+      background: #fff8eb;
+    }
+
+    .log-entry.danger {
+      border-left-color: var(--danger);
+      background: #fff1f3;
+    }
+
+    @media (max-width: 920px) {
+      .layout {
+        grid-template-columns: 1fr;
+      }
+
+      .side {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+      }
+
+      .panel.log-panel {
+        grid-column: 1 / -1;
+      }
+    }
+
+    @media (max-width: 680px) {
+      .app {
+        width: min(100vw - 16px, 1180px);
+        padding-top: 12px;
+      }
+
+      .topbar {
+        grid-template-columns: 1fr;
+      }
+
+      .status-strip {
+        justify-content: start;
+        grid-template-columns: repeat(2, max-content);
+      }
+
+      .board {
+        grid-template-columns: 1fr;
+        grid-template-rows: none;
+        grid-template-areas:
+          "aiA"
+          "aiB"
+          "outside"
+          "aiC"
+          "player";
+        width: 100%;
+      }
+
+      .zone.outside {
+        grid-area: outside;
+      }
+
+      .side {
+        grid-template-columns: 1fr;
+      }
+
+      .action-row {
+        grid-template-columns: 1fr;
+      }
+
+      .ai-assignments,
+      .ai-grid {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    /* PIXEL THEME V1 */
+    :root {
+      --ink: #dce8c8;
+      --muted: #91a38d;
+      --line: #101920;
+      --paper: #111c25;
+      --panel: #1b2a34;
+      --field: #506158;
+      --outside: #687248;
+      --player: #3f82e4;
+      --a: #dc3f4f;
+      --b: #9a54db;
+      --c: #46a552;
+      --warn: #e0ad3d;
+      --danger: #dc3f4f;
+      --ok: #46a96a;
+      --shadow: 6px 6px 0 #081015;
+      font-family: Consolas, "Microsoft YaHei", "PingFang SC", monospace;
+    }
+
+    html { background: #081015; }
+
+    body {
+      color: var(--ink);
+      background-color: #101a22;
+      background-image:
+        linear-gradient(rgba(255,255,255,.025) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(255,255,255,.025) 1px, transparent 1px);
+      background-size: 8px 8px;
+      image-rendering: pixelated;
+    }
+
+    body::before {
+      content: "";
+      position: fixed;
+      inset: 0;
+      pointer-events: none;
+      z-index: 1000;
+      background: repeating-linear-gradient(0deg, transparent 0 3px, rgba(0,0,0,.08) 3px 4px);
+      mix-blend-mode: multiply;
+    }
+
+    .app { width: min(1220px, calc(100vw - 24px)); padding: 16px 0 28px; }
+
+    .topbar {
+      align-items: center;
+      padding: 14px 16px;
+      border: 4px solid #080e13;
+      background: #22343f;
+      box-shadow: var(--shadow), inset 0 0 0 3px #3c5360;
+    }
+
+    h1 {
+      color: #f2e7a9;
+      font-size: clamp(28px, 4vw, 44px);
+      text-shadow: 3px 0 #8b5f2d, 0 3px #8b5f2d, 3px 3px #081015;
+    }
+
+    .subtitle { color: #a8baa6; font-weight: 700; }
+
+    .status-strip { grid-template-columns: repeat(4, max-content); }
+
+    .pill,
+    .sound-toggle {
+      min-height: 34px;
+      border: 3px solid #091117;
+      border-radius: 2px;
+      background: #d8e3bc;
+      color: #152127;
+      box-shadow: 0 3px 0 #070d11;
+      font-weight: 800;
+    }
+
+    .sound-toggle {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 5px;
+      padding: 6px 10px;
+    }
+
+    .sound-toggle[aria-pressed="false"] { background: #6f7c72; color: #26343a; }
+
+    button,
+    select,
+    input {
+      border: 3px solid #080e13;
+      border-radius: 2px;
+      box-shadow: 0 4px 0 #080e13;
+      font-weight: 800;
+      letter-spacing: 0;
+    }
+
+    button { background: #d5dfbd; color: #172329; }
+    button:hover:not(:disabled) { transform: translateY(-1px); background: #edf2d6; border-color: #080e13; }
+    button:active:not(:disabled) { transform: translateY(3px); box-shadow: 0 1px 0 #080e13; }
+    button:disabled { background: #526069; color: #84908f; border-color: #18242b; box-shadow: 0 3px 0 #111a20; }
+
+    .layout { grid-template-columns: minmax(0, 1fr) 336px; gap: 18px; }
+
+    .board {
+      gap: 12px;
+      width: min(100%, 760px);
+      padding: 12px;
+      border: 4px solid #080e13;
+      background: #16252d;
+      box-shadow: var(--shadow), inset 0 0 0 3px #314753;
+    }
+
+    .zone {
+      min-height: 154px;
+      border: 4px solid #111a1e;
+      border-radius: 2px;
+      padding: 10px;
+      box-shadow: inset 0 0 0 3px rgba(218,231,195,.24), 4px 4px 0 #080e13;
+      background-color: #6b7770;
+      background-image: url("assets/map-city.png");
+      background-size: cover;
+      background-position: center;
+      isolation: isolate;
+    }
+
+    .zone::before {
+      content: "";
+      position: absolute;
+      inset: 0;
+      z-index: -1;
+      background: rgba(16,25,30,.38);
+    }
+
+    .zone.outside {
+      min-height: 168px;
+      background-image: url("assets/map-outside.png");
+      background-size: cover;
+      background-position: center;
+    }
+
+    .zone.outside::before { background: rgba(25,35,24,.25); }
+
+    .zone::after {
+      content: "";
+      position: absolute;
+      top: 7px;
+      right: 7px;
+      width: 13px;
+      height: 13px;
+      border: 2px solid #0b1115;
+      box-shadow: 2px 2px 0 #0b1115;
+      background: #d4aa3c;
+    }
+
+    .zone-player::after { background: var(--player); }
+    .zone-ai-a::after { background: var(--a); }
+    .zone-ai-b::after { background: var(--b); }
+    .zone-ai-c::after { background: var(--c); }
+    .zone.outside::after { background: #d4aa3c; }
+
+    .zone.zone-active {
+      border-color: #f2d35e;
+      animation: pixel-zone-pulse .75s steps(2, end) infinite;
+    }
+
+    .zone-title {
+      margin: -3px -3px 9px;
+      padding: 5px 25px 5px 7px;
+      border: 2px solid #10191d;
+      background: rgba(12,20,24,.82);
+      color: #f4eab6;
+      text-shadow: 2px 2px #081015;
+    }
+
+    .zone-link { color: #b5c3ad; }
+    .tokens { grid-template-columns: 1fr; gap: 7px; }
+
+    .token {
+      position: relative;
+      display: grid;
+      grid-template-columns: 62px minmax(0, 1fr);
+      min-height: 106px;
+      padding: 7px;
+      border: 3px solid #091116;
+      border-left-width: 7px;
+      border-radius: 2px;
+      background: rgba(22,34,40,.92);
+      color: #e4edce;
+      box-shadow: 3px 3px 0 #081015, inset 0 0 0 2px rgba(222,234,203,.1);
+      overflow: visible;
+    }
+
+    .token.active { outline: 3px solid #f1d25b; outline-offset: 1px; background: rgba(43,52,44,.96); }
+    .token.dead { opacity: .6; filter: grayscale(1); }
+
+    .piece-wrap {
+      position: relative;
+      display: grid;
+      place-items: center;
+      width: 58px;
+      min-height: 88px;
+      grid-row: 1 / span 2;
+    }
+
+    .piece-sprite {
+      width: 50px;
+      height: 80px;
+      background-image: url("assets/pieces.png");
+      background-repeat: no-repeat;
+      background-size: 400% 100%;
+      background-position-y: center;
+      image-rendering: pixelated;
+      filter: drop-shadow(3px 4px 0 rgba(5,10,13,.72));
+    }
+
+    .token.player .piece-sprite { background-position-x: 0%; }
+    .token.ai-a .piece-sprite { background-position-x: 33.333%; }
+    .token.ai-b .piece-sprite { background-position-x: 66.666%; filter: drop-shadow(3px 4px 0 rgba(5,10,13,.72)) brightness(1.28) saturate(1.45); }
+    .token.ai-c .piece-sprite { background-position-x: 100%; }
+    .token.active .piece-sprite { animation: piece-bob .8s steps(2, end) infinite; }
+    .token.dead .piece-sprite { animation: piece-ko .45s steps(3, end) both; }
+
+    .token-content { min-width: 0; align-self: center; }
+    .token-name { margin-bottom: 5px; color: #f1e9b8; text-shadow: 2px 2px #071015; }
+
+    .hearts { gap: 4px; margin: 5px 0 7px; }
+    .heart {
+      height: 12px;
+      border: 2px solid #0a1115;
+      border-radius: 0;
+      background: #39464a;
+      box-shadow: inset 2px 2px 0 rgba(255,255,255,.08);
+    }
+    .heart.full { background: #dc3f4f; box-shadow: inset 2px 2px 0 #ff8b83; }
+    .meta { color: #aebda8; font-weight: 700; }
+
+    .side { gap: 14px; }
+    .panel,
+    .tutorial-panel,
+    .tutorial-callout,
+    .result-banner {
+      border: 4px solid #080e13;
+      border-radius: 2px;
+      background: #1b2a34;
+      color: var(--ink);
+      box-shadow: var(--shadow), inset 0 0 0 3px #354954;
+    }
+
+    .panel h2,
+    .tutorial-panel h2 { color: #f2e8ad; text-shadow: 2px 2px #081015; }
+    .tutorial-note,
+    .hint { color: #a9baa4; }
+    .tutorial-callout { background: #3a392c; color: #f4dc78; border-color: #0b1115; }
+
+    .rps-grid { gap: 9px; }
+    .rps-grid button {
+      display: grid;
+      justify-items: center;
+      gap: 3px;
+      min-height: 88px;
+      padding: 7px 5px;
+      background: #d5dfbd;
+    }
+
+    .rps-icon {
+      display: block;
+      width: 40px;
+      height: 48px;
+      background-image: url("assets/rps-icons.png");
+      background-size: 300% 100%;
+      background-repeat: no-repeat;
+      image-rendering: pixelated;
+    }
+    .rps-rock { background-position: 0 0; }
+    .rps-scissors { background-position: 50% 0; }
+    .rps-paper { background-position: 100% 0; }
+
+    .throw-box {
+      border: 3px solid #0a1115;
+      border-radius: 2px;
+      background: #2c3d45;
+      color: #dce7c7;
+      box-shadow: 2px 2px 0 #081015;
+    }
+    .throw-box.throw-reveal { animation: throw-pop .3s steps(3, end) both; }
+    .throw-box.throw-winner { border-color: #efd15b; color: #ffe98a; }
+
+    .action-row { grid-template-columns: 110px 1fr; }
+    .action-row select,
+    .ai-field select,
+    .ai-field input { background: #d9e2c3; color: #172329; }
+
+    .button-danger,
+    .button-good,
+    .button-primary {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+      border-color: #080e13;
+      text-shadow: 2px 2px rgba(0,0,0,.35);
+    }
+
+    .action-icon {
+      width: 22px;
+      height: 33px;
+      flex: 0 0 auto;
+      background-image: url("assets/action-icons.png");
+      background-size: 300% 100%;
+      background-repeat: no-repeat;
+      image-rendering: pixelated;
+    }
+    .icon-attack { background-position: 0 0; }
+    .icon-heal { background-position: 50% 0; }
+    .icon-move { background-position: 100% 0; }
+
+    .log { height: 250px; }
+    .log-entry { border-left-width: 5px; border-radius: 0; background: #263840; color: #c8d5bc; }
+    .log-entry.important { background: #3a392b; }
+    .log-entry.danger { background: #43252d; }
+    .ai-profile { border: 3px solid #0a1115; border-radius: 2px; background: #263840; }
+
+    .effect-layer { position: absolute; inset: 0; pointer-events: none; overflow: visible; }
+    .pixel-fx {
+      position: absolute;
+      left: 50%;
+      top: 46%;
+      z-index: 8;
+      width: 58px;
+      height: 58px;
+      transform: translate(-50%, -50%);
+      background-image: url("assets/fx-sheet.png");
+      background-size: 600% 400%;
+      background-repeat: no-repeat;
+      image-rendering: pixelated;
+    }
+    .fx-hit { background-position: 0 0; animation: fx-hit-sheet .42s steps(5, end) both; }
+    .fx-heal { background-position: 0 33.333%; animation: fx-four-sheet .5s steps(3, end) both; }
+    .fx-move { background-position: 0 66.666%; animation: fx-four-sheet .42s steps(3, end) both; }
+    .fx-ko { background-position: 0 100%; animation: fx-four-sheet .55s steps(3, end) both; }
+
+    .floating-value {
+      position: absolute;
+      z-index: 10;
+      left: 50%;
+      top: 16%;
+      padding: 2px 4px;
+      border: 2px solid #080e13;
+      background: #f5edbd;
+      color: #172329;
+      font-size: 15px;
+      font-weight: 900;
+      animation: float-value .7s steps(5, end) both;
+    }
+    .floating-value.damage { color: #b71f35; }
+    .floating-value.heal { color: #167344; }
+
+    .anim-lunge .piece-sprite { animation: piece-lunge .32s steps(3, end); }
+    .anim-hit { animation: token-hit .38s steps(4, end); }
+    .anim-heal { animation: token-heal .52s steps(4, end); }
+    .anim-arrive { animation: token-arrive .42s steps(4, end); }
+    .screen-impact { animation: screen-impact .24s steps(2, end); }
+
+    .result-banner.show {
+      position: relative;
+      z-index: 30;
+      animation: result-drop .55s steps(5, end) both;
+      font-size: 18px;
+      text-shadow: 2px 2px #081015;
+    }
+    .result-banner.win { background: #224b34; color: #a7ef9f; }
+    .result-banner.lose { background: #4a252d; color: #ff9a9a; }
+
+    @keyframes pixel-zone-pulse { 50% { box-shadow: inset 0 0 0 3px #efd15b, 4px 4px 0 #080e13; } }
+    @keyframes piece-bob { 50% { transform: translateY(-4px); } }
+    @keyframes piece-ko { 100% { transform: translateY(8px) rotate(8deg); opacity: .55; } }
+    @keyframes throw-pop { 0% { transform: scale(.7); opacity: 0; } 100% { transform: scale(1); opacity: 1; } }
+    @keyframes piece-lunge { 50% { transform: translateX(10px); } }
+    @keyframes token-hit { 0%,100% { transform: translateX(0); filter: none; } 25% { transform: translateX(-5px); filter: brightness(2); } 50% { transform: translateX(5px); filter: sepia(1) saturate(4); } 75% { transform: translateX(-3px); } }
+    @keyframes token-heal { 50% { box-shadow: 0 0 0 4px #57d985, 3px 3px 0 #081015; } }
+    @keyframes token-arrive { 0% { transform: translateY(-9px); opacity: .3; } 100% { transform: translateY(0); opacity: 1; } }
+    @keyframes float-value { 0% { transform: translate(-50%, 8px); opacity: 0; } 100% { transform: translate(-50%, -22px); opacity: 1; } }
+    @keyframes fx-hit-sheet { to { background-position: 100% 0; opacity: 0; } }
+    @keyframes fx-four-sheet { to { background-position-x: 60%; opacity: 0; } }
+    @keyframes screen-impact { 50% { filter: brightness(1.65) contrast(1.25); } }
+    @keyframes result-drop { 0% { transform: translateY(-18px); opacity: 0; } 100% { transform: translateY(0); opacity: 1; } }
+
+    @media (max-width: 920px) {
+      .layout { grid-template-columns: 1fr; }
+      .side { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+      .board { width: min(100%, 760px); }
+    }
+
+    @media (max-width: 680px) {
+      .status-strip { grid-template-columns: repeat(2, max-content); }
+      .board { padding: 8px; gap: 9px; }
+      .zone { min-height: 138px; }
+      .side { grid-template-columns: 1fr; }
+      .token { grid-template-columns: 58px minmax(0, 1fr); }
+      .ai-assignments, .ai-grid { grid-template-columns: 1fr; }
+    }
+  </style>
+</head>
+<body>
+  <main class="app">
+    <header class="topbar">
+      <div>
+        <h1>出城进城</h1>
+        <div class="subtitle">猜拳夺取行动次数，在五个场地间周旋，活到最后。</div>
+      </div>
+      <div class="status-strip" aria-live="polite">
+        <div class="pill" id="roundPill">第 1 轮</div>
+        <div class="pill" id="phasePill">猜拳阶段</div>
+        <div class="pill" id="actorPill">等待玩家出拳</div>
+        <button class="sound-toggle" id="soundToggle" type="button" title="开启或关闭音效" aria-pressed="true">
+          <span aria-hidden="true">&#9834;</span>
+          <span id="soundLabel">ON</span>
+        </button>
+      </div>
+    </header>
+
+    <section class="result-banner" id="resultBanner">
+      <span id="resultText"></span>
+      <button id="restartTop" type="button">重新开始</button>
+    </section>
+
+    <section class="tutorial-panel" id="introPanel">
+      <h2>新手教程</h2>
+      <div class="tutorial-note">教程会带你熟悉平局、移动、攻击、被攻击和治疗。熟悉规则后也可以直接跳过，进入正常随机对局。</div>
+      <div class="tutorial-actions">
+        <button type="button" class="button-primary" id="startTutorialBtn">开始教程</button>
+        <button type="button" id="skipTutorialBtn">跳过教程</button>
+      </div>
+    </section>
+
+    <section class="tutorial-callout is-hidden" id="tutorialPanel"></section>
+
+    <div class="layout">
+      <section class="board" id="board" aria-label="游戏场地"></section>
+
+      <aside class="side">
+        <section class="panel" id="rpsPanel">
+          <h2>石头剪刀布</h2>
+          <div class="rps-grid">
+            <button type="button" data-throw="rock"><span class="rps-icon rps-rock" aria-hidden="true"></span><span>石头</span></button>
+            <button type="button" data-throw="scissors"><span class="rps-icon rps-scissors" aria-hidden="true"></span><span>剪刀</span></button>
+            <button type="button" data-throw="paper"><span class="rps-icon rps-paper" aria-hidden="true"></span><span>布</span></button>
+          </div>
+          <div class="last-throws" id="lastThrows"></div>
+          <div class="hint" id="rpsHint">请选择你的出拳。不能三种都出现，也不能全相同，否则平局。</div>
+        </section>
+
+        <section class="panel is-hidden" id="actionPanel">
+          <h2>行动</h2>
+          <div class="actions" id="actions"></div>
+          <div class="hint" id="actionHint">行动次数由猜拳结果决定。任何角色都必须用完行动次数。</div>
+        </section>
+
+        <section class="panel log-panel">
+          <h2>事件日志</h2>
+          <div class="log" id="log" aria-live="polite"></div>
+        </section>
+
+        <section class="panel" id="aiPanel">
+          <h2>电脑AI设置</h2>
+          <div class="ai-settings">
+            <div class="ai-assignments" id="aiAssignments"></div>
+            <div id="aiProfiles"></div>
+            <button type="button" id="resetAiBtn">恢复默认</button>
+          </div>
+          <div class="hint">设置只影响当前页面。猜拳阶段可调整，行动阶段会暂时隐藏。</div>
+        </section>
+      </aside>
+    </div>
+  </main>
+
+  <script>
+    const MAX_HP = 5;
+    const order = ["player", "aiA", "aiB", "aiC"];
+    const gestures = ["rock", "scissors", "paper"];
+    const beats = { rock: "scissors", scissors: "paper", paper: "rock" };
+    const gestureName = { rock: "石头", scissors: "剪刀", paper: "布" };
+    const IMMEDIATE_BACKTRACK_PENALTY = 45;
+    const zones = [
+      { id: "playerCity", name: "玩家的城", note: "只通向城外" },
+      { id: "aiACity", name: "电脑A的城", note: "只通向城外" },
+      { id: "aiBCity", name: "电脑B的城", note: "只通向城外" },
+      { id: "aiCCity", name: "电脑C的城", note: "只通向城外" },
+      { id: "outside", name: "城外", note: "可进入任意城" }
+    ];
+    const zoneName = Object.fromEntries(zones.map(zone => [zone.id, zone.name]));
+    const zoneClass = {
+      playerCity: "zone-player",
+      aiACity: "zone-ai-a",
+      aiBCity: "zone-ai-b",
+      aiCCity: "zone-ai-c",
+      outside: "outside"
+    };
+    const aiTypeName = {
+      aggressive: "激进型",
+      conservative: "保守型",
+      chaotic: "混乱型"
+    };
+    const defaultAiAssignments = {
+      aiA: "aggressive",
+      aiB: "conservative",
+      aiC: "chaotic"
+    };
+    const defaultAiSettings = {
+      aggressive: {
+        attackBase: 35,
+        killBonus: 35,
+        lowHpTargetBonus: 8,
+        healBase: 12,
+        lowHpHealBonus: 16,
+        moveAttackBonus: 18,
+        moveSafetyBonus: 32,
+        enemyCountPenalty: 7,
+        randomSwing: 0
+      },
+      conservative: {
+        attackBase: 35,
+        killBonus: 35,
+        lowHpTargetBonus: 8,
+        healBase: 12,
+        lowHpHealBonus: 16,
+        moveAttackBonus: 12,
+        moveSafetyBonus: 36,
+        enemyCountPenalty: 10,
+        randomSwing: 0
+      },
+      chaotic: {
+        attackBase: 35,
+        killBonus: 35,
+        lowHpTargetBonus: 8,
+        healBase: 12,
+        lowHpHealBonus: 16,
+        moveAttackBonus: 18,
+        moveSafetyBonus: 32,
+        enemyCountPenalty: 7,
+        randomSwing: 18
+      }
+    };
+    const aiSettingLabels = {
+      attackBase: "攻击基础分",
+      killBonus: "击杀加分",
+      lowHpTargetBonus: "低血目标加分",
+      healBase: "治疗基础分",
+      lowHpHealBonus: "低血治疗加分",
+      moveAttackBonus: "移动进攻加分",
+      moveSafetyBonus: "移动避险加分",
+      enemyCountPenalty: "敌人数惩罚",
+      randomSwing: "随机扰动"
+    };
+    const aiSettingKeys = Object.keys(aiSettingLabels);
+    const losingGesture = { rock: "scissors", scissors: "paper", paper: "rock" };
+    const winningGestureAgainst = { rock: "paper", scissors: "rock", paper: "scissors" };
+    const tutorialMessages = {
+      intro: "选择开始教程后，会带你熟悉核心操作。",
+      firstRps: "先试着出拳吧。猜拳胜利可以得到行动点数。",
+      secondRps: "再试一次出拳，看看这次能不能拿到行动机会。",
+      moveOutside: "好厉害！你赢得了三次行动机会。请点击移动按钮，先移动到城外。",
+      moveAiA: "现在你在城外了。请点击移动按钮，进入电脑A的城。",
+      attackAiA: "电脑A就在这里。请点击攻击按钮攻击电脑A。",
+      thirdRps: "继续出拳吧。接下来看看没有行动机会时场上会发生什么。",
+      fourthRps: "别慌，再出拳一次，争取把局面扳回来。",
+      heal: "你受到了 1 点伤害。请点击治疗按钮，先把血量恢复回来。",
+      finalAttack: "很好！现在请点击攻击按钮攻击电脑A，完成新手教程。"
+    };
+
+    const initialCharacters = {
+      player: { id: "player", name: "玩家", className: "player", hp: 5, location: "playerCity", actions: 0, alive: true },
+      aiA: { id: "aiA", name: "电脑A", className: "ai-a", hp: 5, location: "aiACity", actions: 0, alive: true },
+      aiB: { id: "aiB", name: "电脑B", className: "ai-b", hp: 5, location: "aiBCity", actions: 0, alive: true },
+      aiC: { id: "aiC", name: "电脑C", className: "ai-c", hp: 5, location: "aiCCity", actions: 0, alive: true }
+    };
+
+    const state = {
+      round: 1,
+      phase: "rps",
+      currentActor: null,
+      lastThrows: null,
+      characters: {},
+      log: [],
+      gameOver: null,
+      computerTimer: null,
+      aiAssignments: {},
+      aiSettings: {},
+      mode: "intro",
+      tutorialStep: 0,
+      tutorialTask: null,
+      tutorialMessage: "",
+      lastWinners: [],
+      pendingEffect: null,
+      soundEnabled: true
+    };
+
+    const boardEl = document.getElementById("board");
+    const logEl = document.getElementById("log");
+    const actionsEl = document.getElementById("actions");
+    const lastThrowsEl = document.getElementById("lastThrows");
+    const resultBanner = document.getElementById("resultBanner");
+    const rpsPanel = document.getElementById("rpsPanel");
+    const actionPanel = document.getElementById("actionPanel");
+    const aiPanel = document.getElementById("aiPanel");
+    const aiAssignmentsEl = document.getElementById("aiAssignments");
+    const aiProfilesEl = document.getElementById("aiProfiles");
+    const introPanel = document.getElementById("introPanel");
+    const tutorialPanel = document.getElementById("tutorialPanel");
+    const soundToggle = document.getElementById("soundToggle");
+    const soundLabel = document.getElementById("soundLabel");
+    let audioContext = null;
+    const activeAudioNodes = new Set();
+
+    function ensureAudio() {
+      if (!state.soundEnabled || typeof window === "undefined") return null;
+      const AudioContextClass = window.AudioContext || window.webkitAudioContext;
+      if (!AudioContextClass) return null;
+      if (!audioContext) audioContext = new AudioContextClass();
+      if (audioContext.state === "suspended") audioContext.resume();
+      return audioContext;
+    }
+
+    function synthTone(frequency, duration, type = "square", volume = 0.045, offset = 0, endFrequency = null) {
+      const context = ensureAudio();
+      if (!context) return;
+      const oscillator = context.createOscillator();
+      const gain = context.createGain();
+      const start = context.currentTime + offset;
+      oscillator.type = type;
+      oscillator.frequency.setValueAtTime(frequency, start);
+      if (endFrequency) oscillator.frequency.exponentialRampToValueAtTime(endFrequency, start + duration);
+      gain.gain.setValueAtTime(0.0001, start);
+      gain.gain.exponentialRampToValueAtTime(volume, start + 0.008);
+      gain.gain.exponentialRampToValueAtTime(0.0001, start + duration);
+      oscillator.connect(gain).connect(context.destination);
+      oscillator.start(start);
+      oscillator.stop(start + duration + 0.02);
+      activeAudioNodes.add(oscillator);
+      oscillator.onended = () => activeAudioNodes.delete(oscillator);
+    }
+
+    function synthNoise(duration = 0.1, volume = 0.035) {
+      const context = ensureAudio();
+      if (!context) return;
+      const length = Math.max(1, Math.floor(context.sampleRate * duration));
+      const buffer = context.createBuffer(1, length, context.sampleRate);
+      const data = buffer.getChannelData(0);
+      let seed = 1949;
+      for (let index = 0; index < length; index += 1) {
+        seed = seed * 16807 % 2147483647;
+        data[index] = seed / 1073741823.5 - 1;
+      }
+      const source = context.createBufferSource();
+      const gain = context.createGain();
+      source.buffer = buffer;
+      gain.gain.setValueAtTime(volume, context.currentTime);
+      gain.gain.exponentialRampToValueAtTime(0.0001, context.currentTime + duration);
+      source.connect(gain).connect(context.destination);
+      source.start();
+      activeAudioNodes.add(source);
+      source.onended = () => activeAudioNodes.delete(source);
+    }
+
+    function playSound(name) {
+      if (!state.soundEnabled || !ensureAudio()) return;
+      if (name === "rps") {
+        synthTone(220, 0.055, "square", 0.035, 0);
+        synthTone(330, 0.055, "square", 0.035, 0.07);
+        synthTone(440, 0.075, "square", 0.04, 0.14);
+      }
+      if (name === "rps-win") {
+        synthTone(523, 0.09, "square", 0.04, 0);
+        synthTone(659, 0.12, "square", 0.045, 0.1);
+      }
+      if (name === "rps-lose") {
+        synthTone(247, 0.09, "square", 0.035, 0);
+        synthTone(165, 0.14, "square", 0.04, 0.1);
+      }
+      if (name === "rps-draw") {
+        synthTone(294, 0.07, "square", 0.03, 0);
+        synthTone(294, 0.07, "square", 0.03, 0.1);
+      }
+      if (name === "attack") {
+        synthNoise(0.055, 0.035);
+        synthTone(980, 0.08, "square", 0.04, 0, 240);
+        synthTone(170, 0.18, "sawtooth", 0.05, 0.025, 58);
+        synthTone(1320, 0.035, "triangle", 0.025, 0.08, 660);
+        synthTone(110, 0.11, "square", 0.03, 0.11, 76);
+      }
+      if (name === "heal") {
+        synthTone(392, 0.11, "square", 0.035, 0);
+        synthTone(523, 0.11, "square", 0.035, 0.09);
+        synthTone(659, 0.15, "square", 0.04, 0.18);
+      }
+      if (name === "move") {
+        synthTone(130, 0.07, "square", 0.025, 0);
+        synthTone(165, 0.08, "square", 0.025, 0.09);
+      }
+      if (name === "win") {
+        [392, 523, 659, 784].forEach((frequency, index) => synthTone(frequency, 0.18, "square", 0.04, index * 0.12));
+      }
+      if (name === "lose") {
+        [330, 247, 196, 147].forEach((frequency, index) => synthTone(frequency, 0.2, "square", 0.04, index * 0.13));
+      }
+    }
+
+    function stopSounds() {
+      activeAudioNodes.forEach(node => {
+        try { node.stop(); } catch (error) { /* already stopped */ }
+      });
+      activeAudioNodes.clear();
+    }
+
+    function toggleSound() {
+      state.soundEnabled = !state.soundEnabled;
+      if (!state.soundEnabled) stopSounds();
+      else {
+        ensureAudio();
+        synthTone(440, 0.07, "square", 0.025);
+      }
+      renderSoundToggle();
+    }
+
+    function renderSoundToggle() {
+      soundToggle.setAttribute("aria-pressed", String(state.soundEnabled));
+      soundLabel.textContent = state.soundEnabled ? "ON" : "OFF";
+    }
+
+
+    function cloneCharacters() {
+      return Object.fromEntries(Object.entries(initialCharacters).map(([id, data]) => [id, { ...data }]));
+    }
+
+    function cloneAiSettings() {
+      return Object.fromEntries(Object.entries(defaultAiSettings).map(([type, settings]) => [type, { ...settings }]));
+    }
+
+    function resetAiDefaults() {
+      state.aiAssignments = { ...defaultAiAssignments };
+      state.aiSettings = cloneAiSettings();
+      addLog("电脑AI设置已恢复默认。", "important");
+      render();
+    }
+
+    function resetGame() {
+      clearTimeout(state.computerTimer);
+      state.round = 1;
+      state.phase = "rps";
+      state.currentActor = null;
+      state.lastThrows = null;
+      state.lastWinners = [];
+      state.pendingEffect = null;
+      state.characters = cloneCharacters();
+      state.log = [];
+      state.gameOver = null;
+      state.mode = "intro";
+      state.tutorialStep = 0;
+      state.tutorialTask = null;
+      state.tutorialMessage = tutorialMessages.intro;
+      if (!state.aiAssignments.aiA) state.aiAssignments = { ...defaultAiAssignments };
+      if (!state.aiSettings.aggressive) state.aiSettings = cloneAiSettings();
+      addLog("请选择开始教程或跳过教程。", "important");
+      render();
+    }
+
+    function startTutorial() {
+      state.mode = "tutorial";
+      state.tutorialStep = 1;
+      state.tutorialTask = "firstRps";
+      state.tutorialMessage = tutorialMessages.firstRps;
+      addLog("新手教程开始。", "important");
+      render();
+    }
+
+    function skipTutorial() {
+      state.mode = "normal";
+      state.tutorialStep = 0;
+      state.tutorialTask = null;
+      state.tutorialMessage = "";
+      addLog("已跳过教程，进入正常对局。请选择石头、剪刀或布。", "important");
+      render();
+    }
+
+    function addLog(text, type = "") {
+      state.log.unshift({ text, type });
+      state.log = state.log.slice(0, 80);
+    }
+
+    function livingCharacters() {
+      return order.map(id => state.characters[id]).filter(character => character.alive);
+    }
+
+    function getEnemies(actor) {
+      return livingCharacters().filter(character => character.id !== actor.id);
+    }
+
+    function getAttackTargets(actor) {
+      return getEnemies(actor).filter(character => character.location === actor.location);
+    }
+
+    function getMoveDestinations(actor) {
+      if (actor.location === "outside") {
+        return zones.filter(zone => zone.id !== "outside");
+      }
+      return zones.filter(zone => zone.id === "outside");
+    }
+
+    function canHeal(actor) {
+      return actor.alive && actor.hp < MAX_HP;
+    }
+
+    function legalActions(actor) {
+      const result = [];
+      if (getAttackTargets(actor).length > 0) result.push("attack");
+      if (canHeal(actor)) result.push("heal");
+      if (getMoveDestinations(actor).length > 0) result.push("move");
+      return result;
+    }
+
+    function randomGesture() {
+      return gestures[Math.floor(Math.random() * gestures.length)];
+    }
+
+    function getScriptedTutorialThrows(playerThrow) {
+      if (state.mode !== "tutorial") return null;
+      if (state.tutorialStep === 1) {
+        return {
+          player: playerThrow,
+          aiA: playerThrow === "rock" ? "scissors" : "rock",
+          aiB: playerThrow === "paper" ? "scissors" : "paper",
+          aiC: playerThrow
+        };
+      }
+      if (state.tutorialStep === 2) {
+        return {
+          player: playerThrow,
+          aiA: losingGesture[playerThrow],
+          aiB: losingGesture[playerThrow],
+          aiC: losingGesture[playerThrow]
+        };
+      }
+      if (state.tutorialStep === 3) {
+        return {
+          player: playerThrow,
+          aiA: winningGestureAgainst[playerThrow],
+          aiB: winningGestureAgainst[playerThrow],
+          aiC: winningGestureAgainst[playerThrow]
+        };
+      }
+      if (state.tutorialStep === 4) {
+        return {
+          player: playerThrow,
+          aiA: losingGesture[playerThrow],
+          aiB: playerThrow,
+          aiC: losingGesture[playerThrow]
+        };
+      }
+      return null;
+    }
+
+    function resolveRps(throws) {
+      const activeIds = order.filter(id => state.characters[id].alive);
+      const present = [...new Set(activeIds.map(id => throws[id]))];
+      const actions = Object.fromEntries(order.map(id => [id, 0]));
+
+      if (present.length !== 2) {
+        return { draw: true, actions, winners: [], losers: [] };
+      }
+
+      const [first, second] = present;
+      const winningGesture = beats[first] === second ? first : second;
+      const winners = activeIds.filter(id => throws[id] === winningGesture);
+      const losers = activeIds.filter(id => throws[id] !== winningGesture);
+      winners.forEach(id => {
+        actions[id] = losers.length;
+      });
+      return { draw: false, actions, winners, losers };
+    }
+
+    function handleRps(playerThrow) {
+      if (state.phase !== "rps" || state.gameOver) return;
+
+      const scriptedThrows = getScriptedTutorialThrows(playerThrow);
+      const throws = scriptedThrows || {
+        player: state.characters.player.alive ? playerThrow : null,
+        aiA: state.characters.aiA.alive ? randomGesture() : null,
+        aiB: state.characters.aiB.alive ? randomGesture() : null,
+        aiC: state.characters.aiC.alive ? randomGesture() : null
+      };
+      state.lastThrows = throws;
+
+      const result = resolveRps(throws);
+      state.lastWinners = [...result.winners];
+      if (result.draw) playSound("rps-draw");
+      else if (result.winners.includes("player")) playSound("rps-win");
+      else playSound("rps-lose");
+      Object.entries(result.actions).forEach(([id, count]) => {
+        state.characters[id].actions = state.characters[id].alive ? count : 0;
+      });
+
+      addLog(`出拳：${order.map(id => `${state.characters[id].name} ${throws[id] ? gestureName[throws[id]] : "出局"}`).join("，")}。`);
+
+      if (result.draw) {
+        addLog("本轮平局，没有角色获得行动次数。进入下一轮猜拳。", "important");
+        handleTutorialRpsResult(result);
+        state.round += 1;
+        render();
+        return;
+      }
+
+      const winnerNames = result.winners.map(id => state.characters[id].name).join("、");
+      const loserCount = result.losers.length;
+      addLog(`${winnerNames} 获胜，各获得 ${loserCount} 次行动。`, "important");
+      handleTutorialRpsResult(result);
+      state.phase = "action";
+      advanceTurn();
+    }
+
+    function handleTutorialRpsResult(result) {
+      if (state.mode !== "tutorial") return;
+      if (state.tutorialStep === 1 && result.draw) {
+        addLog("提示：游戏开始时四名角色石头剪刀布平局概率较高，可以多次点击尝试。", "important");
+        state.tutorialStep = 2;
+        state.tutorialTask = "secondRps";
+        state.tutorialMessage = "游戏开始时四名角色石头剪刀布平局概率较高，可以多次点击尝试。请再次出拳。";
+        return;
+      }
+      if (state.tutorialStep === 2) {
+        state.tutorialTask = "moveOutside";
+        state.tutorialMessage = tutorialMessages.moveOutside;
+        return;
+      }
+      if (state.tutorialStep === 3) {
+        state.tutorialTask = "computerTurn";
+        state.tutorialMessage = "不妙，本轮你没有行动，但其他角色也只能行动一次。注意观察他们的位置和攻击。";
+        return;
+      }
+      if (state.tutorialStep === 4) {
+        state.tutorialTask = "heal";
+        state.tutorialMessage = tutorialMessages.heal;
+      }
+    }
+
+    function advanceTurn() {
+      if (checkGameOver()) {
+        render();
+        return;
+      }
+
+      const nextActorId = order.find(id => {
+        const character = state.characters[id];
+        return character.alive && character.actions > 0;
+      });
+
+      if (!nextActorId) {
+        state.currentActor = null;
+        state.phase = "rps";
+        state.round += 1;
+        if (state.mode === "tutorial" && state.tutorialTask === "computerTurn") {
+          state.tutorialStep = 4;
+          state.tutorialTask = "fourthRps";
+          state.tutorialMessage = tutorialMessages.fourthRps;
+        }
+        addLog("所有行动次数已用完，进入下一轮猜拳。", "important");
+        render();
+        return;
+      }
+
+      state.currentActor = nextActorId;
+      state.phase = "action";
+      render();
+
+      if (nextActorId !== "player") {
+        state.computerTimer = setTimeout(() => performComputerAction(nextActorId), 520);
+      }
+    }
+
+    function performComputerAction(id) {
+      if (state.gameOver || state.currentActor !== id) return;
+      const actor = state.characters[id];
+      if (!actor.alive || actor.actions <= 0) {
+        advanceTurn();
+        return;
+      }
+
+      const decision = getTutorialComputerAction(actor) || chooseComputerDecision(actor);
+      if (decision.kind === "attack") doAttack(actor, state.characters[decision.targetId]);
+      if (decision.kind === "heal") doHeal(actor);
+      if (decision.kind === "move") doMove(actor, decision.destination);
+      finishAction(actor);
+    }
+
+    function getTutorialComputerAction(actor) {
+      if (state.mode !== "tutorial" || state.tutorialStep !== 3 || state.tutorialTask !== "computerTurn") return null;
+      if (actor.id === "aiA" && state.characters.player.alive && state.characters.player.location === actor.location) {
+        return { kind: "attack", targetId: "player" };
+      }
+      if ((actor.id === "aiB" || actor.id === "aiC") && actor.location !== "outside") {
+        return { kind: "move", destination: "outside" };
+      }
+      return null;
+    }
+
+    function chooseComputerDecision(actor) {
+      const candidates = buildComputerCandidates(actor);
+      const scored = candidates.map(candidate => ({
+        ...candidate,
+        score: scoreComputerCandidate(actor, candidate)
+      }));
+      return pickComputerCandidate(actor, scored);
+    }
+
+    function buildComputerCandidates(actor) {
+      const attacks = getAttackTargets(actor).map(target => ({ kind: "attack", targetId: target.id }));
+      const heals = canHeal(actor) ? [{ kind: "heal" }] : [];
+      const moves = getMoveDestinations(actor).map(zone => ({ kind: "move", destination: zone.id }));
+      return [...attacks, ...heals, ...moves];
+    }
+
+    function scoreComputerCandidate(actor, candidate) {
+      const type = state.aiAssignments[actor.id] || "aggressive";
+      const settings = state.aiSettings[type] || defaultAiSettings[type];
+      let score = 0;
+
+      if (candidate.kind === "attack") {
+        const target = state.characters[candidate.targetId];
+        score = settings.attackBase
+          + (MAX_HP + 1 - target.hp) * settings.lowHpTargetBonus
+          + target.actions * 4
+          + (target.hp <= 1 ? settings.killBonus : 0);
+        if (actor.hp <= 2 && target.hp > 1) score -= 10;
+      }
+
+      if (candidate.kind === "heal") {
+        const missingHp = MAX_HP - actor.hp;
+        score = settings.healBase
+          + missingHp * settings.lowHpHealBonus
+          + getAttackTargets(actor).length * 8;
+        if (actor.hp <= 2) score += 30;
+        if (actor.hp >= 4) score -= 18;
+      }
+
+      if (candidate.kind === "move") {
+        const enemiesThere = enemiesInZone(candidate.destination, actor.id);
+        const weakestEnemy = enemiesThere.reduce((weakest, enemy) => !weakest || enemy.hp < weakest.hp ? enemy : weakest, null);
+        score = 18;
+        if (weakestEnemy) score += (MAX_HP - weakestEnemy.hp) * 6;
+        if (enemiesThere.length > 0 && actor.hp >= 4) score += settings.moveAttackBonus;
+        if (enemiesThere.length === 0 && actor.hp <= 2) score += settings.moveSafetyBonus;
+        score -= enemiesThere.length * settings.enemyCountPenalty;
+        if (enemiesThere.length >= 2 && actor.hp <= 3) score -= 18;
+        if (actor.lastMoveRound === state.round && candidate.destination === actor.lastMoveFrom) {
+          score -= IMMEDIATE_BACKTRACK_PENALTY;
+        }
+      }
+
+      if (type === "aggressive") {
+        if (candidate.kind === "attack") score *= 1.35;
+        if (candidate.kind === "heal") score *= 0.75;
+        if (candidate.kind === "move" && enemiesInZone(candidate.destination, actor.id).length > 0) score += 16;
+        if (candidate.kind === "move" && enemiesInZone(candidate.destination, actor.id).some(enemy => enemy.hp <= 2)) score += 18;
+      }
+
+      if (type === "conservative") {
+        if (candidate.kind === "heal") score *= 1.35;
+        if (candidate.kind === "attack" && actor.hp < 4) score *= 0.65;
+        if (candidate.kind === "attack" && actor.hp >= 4) score *= 0.95;
+        if (candidate.kind === "move") {
+          const enemyCount = enemiesInZone(candidate.destination, actor.id).length;
+          if (enemyCount === 0) score += 22;
+          score -= enemyCount * 10;
+        }
+      }
+
+      if (type === "chaotic") {
+        const swing = Number(settings.randomSwing) || 0;
+        score *= randomBetween(0.75, 1.35);
+        score += randomBetween(-swing, swing);
+      }
+
+      return score;
+    }
+
+    function pickComputerCandidate(actor, scored) {
+      const type = state.aiAssignments[actor.id] || "aggressive";
+      const topScore = Math.max(...scored.map(candidate => candidate.score));
+      const threshold = type === "chaotic" ? 16 : 6;
+      const pool = scored.filter(candidate => topScore - candidate.score <= threshold);
+      if (type !== "chaotic") return randomItem(pool);
+
+      const sorted = [...scored].sort((left, right) => right.score - left.score);
+      if (sorted.length > 1 && sorted[0].score - sorted[1].score < 12 && Math.random() < 0.35) {
+        return sorted[1];
+      }
+      return randomItem(pool);
+    }
+
+    function enemiesInZone(zoneId, actorId) {
+      return livingCharacters().filter(character => character.id !== actorId && character.location === zoneId);
+    }
+
+    function randomBetween(min, max) {
+      return min + Math.random() * (max - min);
+    }
+
+    function randomItem(items) {
+      return items[Math.floor(Math.random() * items.length)];
+    }
+
+    function queuePresentation(type, actorId, targetId, options = {}) {
+      state.pendingEffect = { type, actorId, targetId, ...options };
+    }
+
+    function renderPresentationEffects() {
+      const effect = state.pendingEffect;
+      if (!effect) return;
+      state.pendingEffect = null;
+      if (typeof document.querySelector !== "function") return;
+      const actorToken = document.querySelector(`[data-character-id="${effect.actorId}"]`);
+      const targetToken = document.querySelector(`[data-character-id="${effect.targetId}"]`);
+      const targetLayer = targetToken && targetToken.querySelector(".effect-layer");
+      const classes = [];
+
+      if (effect.type === "attack") {
+        if (actorToken) { actorToken.classList.add("anim-lunge"); classes.push([actorToken, "anim-lunge"]); }
+        if (targetToken) { targetToken.classList.add("anim-hit"); classes.push([targetToken, "anim-hit"]); }
+        if (targetLayer) {
+          targetLayer.insertAdjacentHTML("beforeend", '<span class="pixel-fx fx-hit"></span><span class="floating-value damage">-1</span>');
+          if (effect.ko) targetLayer.insertAdjacentHTML("beforeend", '<span class="pixel-fx fx-ko"></span>');
+        }
+        if (document.body) document.body.classList.add("screen-impact");
+      }
+      if (effect.type === "heal") {
+        if (targetToken) { targetToken.classList.add("anim-heal"); classes.push([targetToken, "anim-heal"]); }
+        if (targetLayer) targetLayer.insertAdjacentHTML("beforeend", '<span class="pixel-fx fx-heal"></span><span class="floating-value heal">+1</span>');
+      }
+      if (effect.type === "move") {
+        if (targetToken) { targetToken.classList.add("anim-arrive"); classes.push([targetToken, "anim-arrive"]); }
+        if (targetLayer) targetLayer.insertAdjacentHTML("beforeend", '<span class="pixel-fx fx-move"></span>');
+      }
+
+      setTimeout(() => {
+        classes.forEach(([element, className]) => element.classList.remove(className));
+        if (document.body) document.body.classList.remove("screen-impact");
+        if (targetLayer) targetLayer.innerHTML = "";
+      }, 760);
+    }
+
+    function doAttack(actor, target) {
+      target.hp -= 1;
+      playSound("attack");
+      addLog(`${actor.name} 在${zoneName[actor.location]}攻击 ${target.name}，造成 1 点伤害。`, actor.id === "player" ? "important" : "");
+      if (target.hp <= 0) {
+        target.hp = 0;
+        target.alive = false;
+        target.actions = 0;
+        addLog(`${target.name} 血量归零，出局。`, target.id === "player" ? "danger" : "important");
+      }
+      queuePresentation("attack", actor.id, target.id, { ko: !target.alive });
+    }
+
+    function doHeal(actor) {
+      actor.hp = Math.min(MAX_HP, actor.hp + 1);
+      playSound("heal");
+      addLog(`${actor.name} 治疗自己，回复 1 点血量。`);
+      queuePresentation("heal", actor.id, actor.id);
+    }
+
+    function doMove(actor, destination) {
+      const from = actor.location;
+      actor.lastMoveFrom = from;
+      actor.lastMoveRound = state.round;
+      actor.location = destination;
+      playSound("move");
+      addLog(`${actor.name} 从${zoneName[from]}移动到${zoneName[destination]}。`);
+      queuePresentation("move", actor.id, actor.id);
+    }
+
+    function finishAction(actor) {
+      actor.actions = Math.max(0, actor.actions - 1);
+      if (checkGameOver()) {
+        render();
+        return;
+      }
+      if (actor.actions > 0 && actor.alive) {
+        render();
+        if (actor.id !== "player") {
+          state.computerTimer = setTimeout(() => performComputerAction(actor.id), 520);
+        }
+        return;
+      }
+      advanceTurn();
+    }
+
+    function checkGameOver() {
+      if (state.gameOver) return true;
+      const player = state.characters.player;
+      if (!player.alive) {
+        state.gameOver = "lose";
+        state.phase = "gameover";
+        state.currentActor = null;
+        playSound("lose");
+        return true;
+      }
+      const living = livingCharacters();
+      if (living.length === 1 && living[0].id === "player") {
+        state.gameOver = "win";
+        state.phase = "gameover";
+        state.currentActor = null;
+        playSound("win");
+        return true;
+      }
+      return false;
+    }
+
+    function handlePlayerAttack() {
+      document.activeElement?.blur?.();
+      const actor = state.characters.player;
+      const targetId = document.getElementById("attackTarget")?.value;
+      const target = state.characters[targetId];
+      if (!isPlayerTurn() || !target || !target.alive || target.location !== actor.location || !isTutorialPlayerActionAllowed("attack", targetId)) return;
+      doAttack(actor, target);
+      advanceTutorialAfterPlayerAction("attack", targetId);
+      finishAction(actor);
+    }
+
+    function handlePlayerHeal() {
+      document.activeElement?.blur?.();
+      const actor = state.characters.player;
+      if (!isPlayerTurn() || !canHeal(actor) || !isTutorialPlayerActionAllowed("heal")) return;
+      doHeal(actor);
+      advanceTutorialAfterPlayerAction("heal");
+      finishAction(actor);
+    }
+
+    function handlePlayerMove() {
+      document.activeElement?.blur?.();
+      const actor = state.characters.player;
+      const destination = document.getElementById("moveTarget")?.value;
+      if (!isPlayerTurn() || !getMoveDestinations(actor).some(zone => zone.id === destination) || !isTutorialPlayerActionAllowed("move", destination)) return;
+      doMove(actor, destination);
+      advanceTutorialAfterPlayerAction("move", destination);
+      finishAction(actor);
+    }
+
+    function isPlayerTurn() {
+      return state.phase === "action" && state.currentActor === "player" && state.characters.player.actions > 0 && !state.gameOver;
+    }
+
+    function isTutorialPlayerActionAllowed(kind, value = null) {
+      if (state.mode !== "tutorial") return true;
+      if (state.tutorialTask === "moveOutside") return kind === "move" && value === "outside";
+      if (state.tutorialTask === "moveAiA") return kind === "move" && value === "aiACity";
+      if (state.tutorialTask === "attackAiA") return kind === "attack" && value === "aiA";
+      if (state.tutorialTask === "heal") return kind === "heal";
+      if (state.tutorialTask === "finalAttack") return kind === "attack" && value === "aiA";
+      return false;
+    }
+
+    function advanceTutorialAfterPlayerAction(kind, value = null) {
+      if (state.mode !== "tutorial") return;
+      if (state.tutorialTask === "moveOutside" && kind === "move" && value === "outside") {
+        state.tutorialTask = "moveAiA";
+        state.tutorialMessage = tutorialMessages.moveAiA;
+        return;
+      }
+      if (state.tutorialTask === "moveAiA" && kind === "move" && value === "aiACity") {
+        state.tutorialTask = "attackAiA";
+        state.tutorialMessage = tutorialMessages.attackAiA;
+        return;
+      }
+      if (state.tutorialTask === "attackAiA" && kind === "attack" && value === "aiA") {
+        state.tutorialStep = 3;
+        state.tutorialTask = "thirdRps";
+        state.tutorialMessage = tutorialMessages.thirdRps;
+        return;
+      }
+      if (state.tutorialTask === "heal" && kind === "heal") {
+        state.tutorialTask = "finalAttack";
+        state.tutorialMessage = tutorialMessages.finalAttack;
+        return;
+      }
+      if (state.tutorialTask === "finalAttack" && kind === "attack" && value === "aiA") {
+        state.mode = "normal";
+        state.tutorialStep = 0;
+        state.tutorialTask = null;
+        state.tutorialMessage = "";
+        addLog("新手教程结束，接下来进入正常对局。", "important");
+      }
+    }
+
+    function render() {
+      renderStatus();
+      renderBoard();
+      renderRps();
+      renderActions();
+      renderAiSettings();
+      renderLog();
+      renderResult();
+      renderPanelVisibility();
+      renderSoundToggle();
+      renderPresentationEffects();
+    }
+
+    function renderPanelVisibility() {
+      introPanel.classList.toggle("is-hidden", state.mode !== "intro" || Boolean(state.gameOver));
+      tutorialPanel.classList.toggle("is-hidden", state.mode !== "tutorial" || !state.tutorialMessage || Boolean(state.gameOver));
+      rpsPanel.classList.toggle("is-hidden", state.mode === "intro" || state.phase !== "rps" || Boolean(state.gameOver));
+      actionPanel.classList.toggle("is-hidden", state.phase !== "action" || Boolean(state.gameOver));
+      aiPanel.classList.toggle("is-hidden", state.mode !== "normal" || state.phase !== "rps" || Boolean(state.gameOver));
+      tutorialPanel.textContent = state.tutorialMessage;
+    }
+
+    function renderStatus() {
+      document.getElementById("roundPill").textContent = `第 ${state.round} 轮`;
+      document.getElementById("phasePill").textContent = state.mode === "intro" ? "教程入口" : state.phase === "rps" ? "猜拳阶段" : state.phase === "action" ? "行动阶段" : "游戏结束";
+      const actorText = state.mode === "intro" ? "请选择教程" : state.currentActor ? `${state.characters[state.currentActor].name}行动中` : state.phase === "rps" ? "等待玩家出拳" : "无行动角色";
+      document.getElementById("actorPill").textContent = actorText;
+    }
+
+    function renderBoard() {
+      boardEl.innerHTML = zones.map(zone => {
+        const occupants = order
+          .map(id => state.characters[id])
+          .filter(character => character.location === zone.id || (!character.alive && zone.id === character.location));
+        const activeZone = state.currentActor && state.characters[state.currentActor].location === zone.id ? "zone-active" : "";
+        return `
+          <article class="zone ${zoneClass[zone.id]} ${activeZone}">
+            <div class="zone-title">
+              <span>${zone.name}</span>
+              <span class="zone-link">${zone.note}</span>
+            </div>
+            <div class="tokens">
+              ${occupants.length ? occupants.map(renderToken).join("") : '<div class="meta">暂无角色</div>'}
+            </div>
+          </article>
+        `;
+      }).join("");
+    }
+
+    function renderToken(character) {
+      const hearts = Array.from({ length: MAX_HP }, (_, index) => `<span class="heart ${index < character.hp ? "full" : ""}"></span>`).join("");
+      const active = state.currentActor === character.id ? "active" : "";
+      const dead = character.alive ? "" : "dead";
+      return `
+        <div class="token ${character.className} ${active} ${dead}" data-character-id="${character.id}">
+          <div class="piece-wrap">
+            <div class="piece-sprite" aria-hidden="true"></div>
+            <div class="effect-layer" aria-hidden="true"></div>
+          </div>
+          <div class="token-content">
+            <div class="token-name">
+              <span>${character.name}</span>
+              <span>${character.alive ? `${character.hp}/${MAX_HP}` : "出局"}</span>
+            </div>
+            <div class="hearts">${hearts}</div>
+            <div class="meta">位置：${zoneName[character.location]}</div>
+            <div class="meta">行动次数：${character.actions}</div>
+          </div>
+        </div>
+      `;
+    }
+
+    function renderRps() {
+      const disabled = state.mode === "intro" || state.phase !== "rps" || Boolean(state.gameOver);
+      document.querySelectorAll("[data-throw]").forEach(button => {
+        button.disabled = disabled;
+      });
+      lastThrowsEl.innerHTML = order.map((id, index) => {
+        const throwName = state.lastThrows ? (state.lastThrows[id] ? gestureName[state.lastThrows[id]] : "出局") : "未出拳";
+        const winnerClass = state.lastWinners.includes(id) ? "throw-winner" : "";
+        return `<div class="throw-box throw-reveal ${winnerClass}" style="animation-delay:${index * 65}ms"><strong>${state.characters[id].name}</strong><br>${throwName}</div>`;
+      }).join("");
+      document.getElementById("rpsHint").textContent = state.mode === "tutorial" && state.tutorialMessage
+        ? state.tutorialMessage
+        : disabled ? "行动阶段结束后会进入下一轮猜拳。" : "请选择你的出拳。不能三种都出现，也不能全相同，否则平局。";
+    }
+
+    function renderActions() {
+      const player = state.characters.player;
+      if (state.gameOver) {
+        actionsEl.innerHTML = `<button type="button" class="button-primary" id="restartAction">重新开始</button>`;
+        document.getElementById("restartAction").addEventListener("click", resetGame);
+        document.getElementById("actionHint").textContent = "游戏已经结束。";
+        return;
+      }
+
+      if (!isPlayerTurn()) {
+        actionsEl.innerHTML = `<button type="button" disabled>等待行动</button>`;
+        const actor = state.currentActor ? state.characters[state.currentActor].name : "无";
+        document.getElementById("actionHint").textContent = state.phase === "rps" ? "先通过猜拳决定本轮行动次数。" : `当前由${actor}行动。`;
+        return;
+      }
+
+      let targets = getAttackTargets(player);
+      let moves = getMoveDestinations(player);
+      if (state.mode === "tutorial") {
+        if (state.tutorialTask === "attackAiA" || state.tutorialTask === "finalAttack") {
+          targets = targets.filter(target => target.id === "aiA");
+          moves = [];
+        } else if (state.tutorialTask === "moveOutside") {
+          targets = [];
+          moves = moves.filter(zone => zone.id === "outside");
+        } else if (state.tutorialTask === "moveAiA") {
+          targets = [];
+          moves = moves.filter(zone => zone.id === "aiACity");
+        } else if (state.tutorialTask === "heal") {
+          targets = [];
+          moves = [];
+        }
+      }
+      const canAttack = targets.length > 0;
+      const healable = canHeal(player) && (state.mode !== "tutorial" || state.tutorialTask === "heal");
+      const onlyMove = !canAttack && !healable;
+      const attackHtml = canAttack && !onlyMove ? `
+        <div class="action-row">
+          <button type="button" class="button-danger" id="attackBtn"><span class="action-icon icon-attack" aria-hidden="true"></span>攻击</button>
+          <select id="attackTarget" aria-label="选择攻击目标">
+            ${targets.map(target => `<option value="${target.id}">${target.name}，血量 ${target.hp}</option>`).join("")}
+          </select>
+        </div>
+      ` : "";
+      const healHtml = healable && !onlyMove ? `<button type="button" class="button-good" id="healBtn"><span class="action-icon icon-heal" aria-hidden="true"></span>治疗 +1</button>` : "";
+      const moveHtml = moves.length > 0 ? `
+        <div class="action-row">
+          <button type="button" class="button-primary" id="moveBtn"><span class="action-icon icon-move" aria-hidden="true"></span>移动</button>
+          <select id="moveTarget" aria-label="选择移动地点">
+            ${moves.map(zone => `<option value="${zone.id}">${zone.name}</option>`).join("")}
+          </select>
+        </div>
+      ` : "";
+
+      actionsEl.innerHTML = `${attackHtml}${healHtml}${moveHtml}`;
+      const moveBtn = document.getElementById("moveBtn");
+      if (moveBtn) moveBtn.addEventListener("click", handlePlayerMove);
+      if (canAttack && !onlyMove) document.getElementById("attackBtn").addEventListener("click", handlePlayerAttack);
+      if (healable && !onlyMove) document.getElementById("healBtn").addEventListener("click", handlePlayerHeal);
+      document.getElementById("actionHint").textContent = state.mode === "tutorial" && state.tutorialMessage
+        ? state.tutorialMessage
+        : onlyMove
+        ? `你还有 ${player.actions} 次行动；当前只能移动，不能跳过。`
+        : `你还有 ${player.actions} 次行动；可以攻击、治疗或移动，但不能跳过。`;
+    }
+
+    function renderAiSettings() {
+      aiAssignmentsEl.innerHTML = ["aiA", "aiB", "aiC"].map(id => `
+        <label class="ai-field">
+          ${state.characters[id].name}
+          <select data-ai-assignment="${id}">
+            ${Object.entries(aiTypeName).map(([type, name]) => `<option value="${type}" ${state.aiAssignments[id] === type ? "selected" : ""}>${name}</option>`).join("")}
+          </select>
+        </label>
+      `).join("");
+
+      aiProfilesEl.innerHTML = Object.entries(aiTypeName).map(([type, name]) => `
+        <section class="ai-profile">
+          <div class="ai-profile-title">${name}参数</div>
+          <div class="ai-grid">
+            ${aiSettingKeys.map(key => `
+              <label class="ai-field">
+                ${aiSettingLabels[key]}
+                <input type="number" step="1" data-ai-type="${type}" data-ai-key="${key}" value="${state.aiSettings[type][key]}">
+                <span class="ai-default">默认 ${defaultAiSettings[type][key]}</span>
+              </label>
+            `).join("")}
+          </div>
+        </section>
+      `).join("");
+
+      document.querySelectorAll("[data-ai-assignment]").forEach(select => {
+        select.addEventListener("change", handleAiAssignmentChange);
+      });
+      document.querySelectorAll("[data-ai-key]").forEach(input => {
+        input.addEventListener("change", handleAiSettingChange);
+        input.addEventListener("input", handleAiSettingChange);
+      });
+    }
+
+    function handleAiAssignmentChange(event) {
+      const id = event.currentTarget.dataset.aiAssignment;
+      state.aiAssignments[id] = event.currentTarget.value;
+    }
+
+    function handleAiSettingChange(event) {
+      const type = event.currentTarget.dataset.aiType;
+      const key = event.currentTarget.dataset.aiKey;
+      const value = Number(event.currentTarget.value);
+      if (!Number.isFinite(value)) return;
+      state.aiSettings[type][key] = value;
+    }
+
+    function renderLog() {
+      logEl.innerHTML = state.log.map(entry => `<div class="log-entry ${entry.type}">${entry.text}</div>`).join("");
+    }
+
+    function renderResult() {
+      if (!state.gameOver) {
+        resultBanner.className = "result-banner";
+        return;
+      }
+      resultBanner.className = `result-banner show ${state.gameOver}`;
+      document.getElementById("resultText").textContent = state.gameOver === "win" ? "胜利：你存活并击败了所有电脑。" : "失败：玩家血量归零。";
+    }
+
+    function runRuleTests() {
+      const oldCharacters = state.characters;
+      state.characters = cloneCharacters();
+      const actionsFrom = sample => resolveRps(sample).actions;
+      console.assert(resolveRps({ player: "rock", aiA: "rock", aiB: "rock", aiC: "rock" }).draw, "all same is draw");
+      console.assert(resolveRps({ player: "rock", aiA: "scissors", aiB: "paper", aiC: "rock" }).draw, "three gestures is draw");
+      console.assert(actionsFrom({ player: "rock", aiA: "scissors", aiB: "scissors", aiC: "scissors" }).player === 3, "one winner gets three actions");
+      const split = actionsFrom({ player: "rock", aiA: "rock", aiB: "scissors", aiC: "scissors" });
+      console.assert(split.player === 2 && split.aiA === 2, "two winners get two actions");
+      const triple = actionsFrom({ player: "paper", aiA: "paper", aiB: "paper", aiC: "rock" });
+      console.assert(triple.player === 1 && triple.aiA === 1 && triple.aiB === 1, "three winners get one action");
+      state.characters = oldCharacters;
+    }
+
+    document.querySelectorAll("[data-throw]").forEach(button => {
+      button.addEventListener("click", () => {
+        ensureAudio();
+        playSound("rps");
+        handleRps(button.dataset.throw);
+      });
+    });
+    document.getElementById("restartTop").addEventListener("click", resetGame);
+    document.getElementById("resetAiBtn").addEventListener("click", resetAiDefaults);
+    soundToggle.addEventListener("click", toggleSound);
+    document.getElementById("startTutorialBtn").addEventListener("click", startTutorial);
+    document.getElementById("skipTutorialBtn").addEventListener("click", skipTutorial);
+
+    resetGame();
+    runRuleTests();
+  </script>
+</body>
+</html>
